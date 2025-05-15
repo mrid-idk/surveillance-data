@@ -8,9 +8,9 @@ async function fetchJSON(url) {
 }
 
 async function loadAllData() {
-  const indexList = await fetchJSON('./data_json/index.json');
+  const indexList = await fetchJSON('data_json/index.json');
   const datasets = await Promise.all(
-    indexList.map(filename => fetchJSON(`./data_json/${filename}`))
+    indexList.map(filename => fetchJSON(`data_json/${filename}`))
   );
   allData = datasets.flat();
 }
