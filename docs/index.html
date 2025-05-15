@@ -2,81 +2,129 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Surveillance Data Viewer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Surveillance Dashboard</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 2rem; }
-    table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
-    th, td { border: 1px solid #ccc; padding: 8px; }
-    th { background: #eee; }
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f9f9f9;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 20px;
+      justify-content: center;
+    }
+    input, select {
+      padding: 8px;
+      font-size: 16px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ddd;
+      text-align: left;
+    }
+    th {
+      background-color: #f0f0f0;
+    }
   </style>
 </head>
 <body>
-  <h1>Surveillance Data Viewer</h1>
-  <select id="dateSelector"></select>
-  <div id="tableContainer"></div>
+  <h1>Surveillance Indicators</h1>
+
+  <div class="filters">
+    <input type="text" id="searchStock" placeholder="Search stock name..." />
+    <input type="date" id="dateFilter" />
+    <select id="indicatorFilter">
+      <option value="">All Indicators</option>
+      <option value="GSM">GSM</option>
+      <option value="ASM">ASM</option>
+      <option value="SURV">SURV</option>
+      <option value="SMS">SMS</option>
+    </select>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Stock</th>
+        <th>Indicator</th>
+        <th>Details</th>
+      </tr>
+    </thead>
+    <tbody id="dataTable"></tbody>
+  </table>
 
   <script>
-    async function loadFileList() {
-      const res = await fetch('data_json/file_list.json');
-      const files = await res.json();
-      return files;
+    let allData = [];
+
+    // Utility to convert DDMMYY to YYYY-MM-DD
+    function parseDateFromFilename(filename) {
+      const day = filename.substring(3, 5);
+      const month = filename.substring(5, 7);
+      const year = '20' + filename.substring(7, 9);
+      return `${year}-${month}-${day}`;
     }
 
-    async function loadJsonFile(filename) {
-      const res = await fetch(`data_json/${filename}`);
-      const data = await res.json();
-      return data;
+    async function loadData() {
+      const fileList = await fetch('data_json/file_list.json').then(res => res.json());
+      const promises = fileList.map(file =>
+        fetch('data_json/' + file)
+          .then(res => res.json())
+          .then(json => json.map(row => ({
+            date: parseDateFromFilename(file.replace('.json', '')),
+            stock: row.SC_NAME || row.SC_CODE || 'Unknown',
+            indicator: row.INDICATOR || 'N/A',
+            details: JSON.stringify(row)
+          })))
+      );
+
+      const all = await Promise.all(promises);
+      allData = all.flat();
+      filterAndDisplay();
     }
 
-    async function init() {
-      const fileList = await loadFileList();
-      const dateSelector = document.getElementById('dateSelector');
+    function filterAndDisplay() {
+      const stockQuery = document.getElementById('searchStock').value.toLowerCase();
+      const dateQuery = document.getElementById('dateFilter').value;
+      const indicatorQuery = document.getElementById('indicatorFilter').value;
 
-      fileList.forEach(file => {
-        const option = document.createElement('option');
-        option.value = file;
-        option.textContent = file.replace('.json', '');
-        dateSelector.appendChild(option);
+      const filtered = allData.filter(row => {
+        const stockMatch = row.stock.toLowerCase().includes(stockQuery);
+        const dateMatch = !dateQuery || row.date === dateQuery;
+        const indicatorMatch = !indicatorQuery || row.indicator.includes(indicatorQuery);
+        return stockMatch && dateMatch && indicatorMatch;
       });
 
-      dateSelector.addEventListener('change', async (e) => {
-        const selectedFile = e.target.value;
-        const data = await loadJsonFile(selectedFile);
-        renderTable(data);
-      });
-
-      // Load first file by default
-      if (fileList.length) {
-        dateSelector.value = fileList[0];
-        const initialData = await loadJsonFile(fileList[0]);
-        renderTable(initialData);
-      }
+      const tableBody = document.getElementById('dataTable');
+      tableBody.innerHTML = filtered.map(row => `
+        <tr>
+          <td>${row.date}</td>
+          <td>${row.stock}</td>
+          <td>${row.indicator}</td>
+          <td><pre style="white-space: pre-wrap">${row.details}</pre></td>
+        </tr>
+      `).join('');
     }
 
-    function renderTable(data) {
-      const container = document.getElementById('tableContainer');
-      if (!data || !data.length) {
-        container.innerHTML = '<p>No data available</p>';
-        return;
-      }
+    document.getElementById('searchStock').addEventListener('input', filterAndDisplay);
+    document.getElementById('dateFilter').addEventListener('change', filterAndDisplay);
+    document.getElementById('indicatorFilter').addEventListener('change', filterAndDisplay);
 
-      let html = '<table><thead><tr>';
-      // Assume all objects have same keys, get keys from first
-      const headers = Object.keys(data[0]);
-      headers.forEach(h => html += `<th>${h}</th>`);
-      html += '</tr></thead><tbody>';
-
-      data.forEach(row => {
-        html += '<tr>';
-        headers.forEach(h => html += `<td>${row[h]}</td>`);
-        html += '</tr>';
-      });
-
-      html += '</tbody></table>';
-      container.innerHTML = html;
-    }
-
-    init();
+    loadData();
   </script>
 </body>
 </html>
+
