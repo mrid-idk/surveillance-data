@@ -2,131 +2,43 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Surveillance Dashboard</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      background: #f9f9f9;
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    .filters {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 15px;
-      margin-bottom: 20px;
-      justify-content: center;
-    }
-    input, select {
-      padding: 8px;
-      font-size: 16px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #fff;
-    }
-    th, td {
-      padding: 10px;
-      border: 1px solid #ddd;
-      text-align: left;
-    }
-    th {
-      background-color: #f0f0f0;
-    }
-  </style>
+  <title>Surveillance Indicators Dashboard</title>
+  <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css' rel='stylesheet' />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h1>Surveillance Indicators</h1>
+  <h1>Surveillance Indicators Dashboard</h1>
 
-  <div class="filters">
-    <input type="text" id="searchStock" placeholder="Search stock name..." />
-    <input type="date" id="dateFilter" />
-    <select id="indicatorFilter">
-      <option value="">All Indicators</option>
-      <option value="GSM">GSM</option>
-      <option value="ASM">ASM</option>
-      <option value="SURV">SURV</option>
-      <option value="SMS">SMS</option>
-    </select>
-  </div>
+  <section id="filter-section">
+    <label for="date-select">Select Date:</label>
+    <input type="date" id="date-select" />
+    
+    <label for="stock-search">Search Stock:</label>
+    <input type="text" id="stock-search" placeholder="Enter stock symbol" />
+  </section>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>Stock</th>
-        <th>Indicator</th>
-        <th>Details</th>
-      </tr>
-    </thead>
-    <tbody id="dataTable"></tbody>
-  </table>
+  <section id="day-data">
+    <h2>Indicators for Selected Day</h2>
+    <input type="text" id="filter-input" placeholder="Filter indicators..." />
+    <table id="indicators-table" border="1">
+      <thead>
+        <tr><th>Stock</th><th>Indicator1</th><th>Indicator2</th><th>...</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
 
-  <script>
-    let allData = [];
+  <section id="stock-history">
+    <h2>Stock Historical Indicators (Calendar View)</h2>
+    <div id='calendar'></div>
+  </section>
 
-    // Utility to convert DDMMYY to YYYY-MM-DD
-    function parseDateFromFilename(filename) {
-      const day = filename.substring(3, 5);
-      const month = filename.substring(5, 7);
-      const year = '20' + filename.substring(7, 9);
-      return `${year}-${month}-${day}`;
-    }
+  <section id="aggregate-section">
+    <h2>Aggregate Indicators by Day</h2>
+    <div id="aggregate-output"></div>
+  </section>
 
-    async function loadData() {
-      const fileList = await fetch('data_json/file_list.json').then(res => res.json());
-      const promises = fileList.map(file =>
-        fetch('data_json/' + file)
-          .then(res => res.json())
-          .then(json => json.map(row => ({
-            date: parseDateFromFilename(file.replace('.json', '')),
-            stock: row.SC_NAME || row.SC_CODE || 'Unknown',
-            indicator: row.INDICATOR || 'N/A',
-            details: JSON.stringify(row)
-          })))
-      );
-
-      const all = await Promise.all(promises);
-      allData = all.flat();
-      filterAndDisplay();
-    }
-
-    function filterAndDisplay() {
-      const stockQuery = document.getElementById('searchStock').value.toLowerCase();
-      const dateQuery = document.getElementById('dateFilter').value;
-      const indicatorQuery = document.getElementById('indicatorFilter').value;
-
-      const filtered = allData.filter(row => {
-        const stockMatch = row.stock.toLowerCase().includes(stockQuery);
-        const dateMatch = !dateQuery || row.date === dateQuery;
-        const indicatorMatch = !indicatorQuery || row.indicator.includes(indicatorQuery);
-        return stockMatch && dateMatch && indicatorMatch;
-      });
-
-      const tableBody = document.getElementById('dataTable');
-      tableBody.innerHTML = filtered.map(row => `
-        <tr>
-          <td>${row.date}</td>
-          <td>${row.stock}</td>
-          <td>${row.indicator}</td>
-          <td><pre style="white-space: pre-wrap">${row.details}</pre></td>
-        </tr>
-      `).join('');
-    }
-
-    document.getElementById('searchStock').addEventListener('input', filterAndDisplay);
-    document.getElementById('dateFilter').addEventListener('change', filterAndDisplay);
-    document.getElementById('indicatorFilter').addEventListener('change', filterAndDisplay);
-
-    loadData();
-  </script>
+  <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.js'></script>
+  <script src="script.js"></script>
 </body>
 </html>
-
-</html>
-
