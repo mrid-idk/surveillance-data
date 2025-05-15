@@ -1,82 +1,100 @@
-async function fetchStockData(fileName) {
-  const response = await fetch(`../data_json/${fileName}`);
-  return await response.json();
+// Load index.json, then all data files, then allow filtering, calendar view, summary aggregation
+
+let allData = []; // Will hold all surveillance data from all files
+let calendar;
+
+async function fetchJSON(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch ${url}`);
+  return res.json();
 }
 
-function extractIndicators(data) {
-  return data.map(entry => ({
-    symbol: entry.SYMBOL,
-    date: entry.DATE,
-    indicators: {
-      regFlag: entry.REG_FLAG,
-      asmStage: entry.ASM_STAGE,
-      gsmStage: entry.GSM_STAGE || null,
+async function loadAllData() {
+  const indexList = await fetchJSON('../data_json/index.json');
+  const datasets = await Promise.all(
+    indexList.map(filename => fetchJSON(`../data_json/${filename}`))
+  );
+  allData = datasets.flat();
+}
+
+function filterData(stockSymbol, date) {
+  return allData.filter(item => {
+    let symbolMatch = true, dateMatch = true;
+    if (stockSymbol) {
+      symbolMatch = item.SYMBOL.toLowerCase().includes(stockSymbol.toLowerCase());
     }
-  }));
+    if (date) {
+      dateMatch = item.DATE === date;
+    }
+    return symbolMatch && dateMatch;
+  });
 }
 
 function groupByDate(data) {
   const summary = {};
-
-  data.forEach(entry => {
-    const date = entry.date;
-    if (!summary[date]) {
-      summary[date] = {
-        regCount: 0,
-        asm1Count: 0,
-        asm2Count: 0,
-        total: 0,
-      };
-    }
-
-    if (entry.indicators.regFlag === '1') summary[date].regCount += 1;
-    if (entry.indicators.asmStage === '1') summary[date].asm1Count += 1;
-    if (entry.indicators.asmStage === '2') summary[date].asm2Count += 1;
-    summary[date].total += 1;
+  data.forEach(item => {
+    const d = item.DATE;
+    if (!summary[d]) summary[d] = { REG_FLAG: 0, ASM_STAGE_1: 0, ASM_STAGE_2: 0, total: 0 };
+    if (item.REG_FLAG === '1') summary[d].REG_FLAG += 1;
+    if (item.ASM_STAGE === '1') summary[d].ASM_STAGE_1 += 1;
+    if (item.ASM_STAGE === '2') summary[d].ASM_STAGE_2 += 1;
+    summary[d].total += 1;
   });
-
   return summary;
 }
 
-function convertToCalendarEvents(summary) {
-  return Object.entries(summary).map(([date, stats]) => ({
-    title: `REG: ${stats.regCount}, ASM1: ${stats.asm1Count}, ASM2: ${stats.asm2Count}`,
-    date,
-    allDay: true
-  }));
-}
+function renderCalendar(data) {
+  const events = [];
 
-function displaySummary(summary) {
-  const container = document.getElementById('indicatorSummary');
-  container.innerHTML = '<h3>Daily Summary</h3>';
-  Object.entries(summary).forEach(([date, stats]) => {
-    const div = document.createElement('div');
-    div.textContent = `${date}: REG=${stats.regCount}, ASM1=${stats.asm1Count}, ASM2=${stats.asm2Count}`;
-    container.appendChild(div);
-  });
-}
+  // Group by date and create event titles
+  const summary = groupByDate(data);
+  for (const [date, counts] of Object.entries(summary)) {
+    const title = `REG: ${counts.REG_FLAG}, ASM1: ${counts.ASM_STAGE_1}, ASM2: ${counts.ASM_STAGE_2}`;
+    events.push({ title, date, allDay: true });
+  }
 
-function renderCalendar(events) {
-  document.getElementById('calendar').innerHTML = '';
-  const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+  if (calendar) {
+    calendar.destroy();
+  }
+
+  const calendarEl = document.getElementById('calendar');
+  calendar = new FullCalendar.Calendar(calendarEl, {
     initialView: 'dayGridMonth',
-    events: events
+    events,
+    height: 500
   });
   calendar.render();
 }
 
-document.getElementById('fileSelector').addEventListener('change', async function () {
-  const file = this.value;
-  const rawData = await fetchStockData(file);
-  const indicators = extractIndicators(rawData);
-  const summary = groupByDate(indicators);
-  const events = convertToCalendarEvents(summary);
+function renderSummary(data) {
+  const container = document.getElementById('summary');
+  const summary = groupByDate(data);
+  container.innerHTML = '<h3>Daily Aggregated Indicator Counts</h3>';
 
-  renderCalendar(events);
-  displaySummary(summary);
-});
+  for (const [date, counts] of Object.entries(summary)) {
+    const div = document.createElement('div');
+    div.textContent = `${date} - REG: ${counts.REG_FLAG}, ASM1: ${counts.ASM_STAGE_1}, ASM2: ${counts.ASM_STAGE_2}, Total: ${counts.total}`;
+    container.appendChild(div);
+  }
+}
 
-// Load default file on first render
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('fileSelector').dispatchEvent(new Event('change'));
-});
+function onFilterChange() {
+  const stockSymbol = document.getElementById('stockFilter').value.trim();
+  const date = document.getElementById('dateFilter').value;
+  const filtered = filterData(stockSymbol, date);
+  renderCalendar(filtered);
+  renderSummary(filtered);
+}
+
+async function init() {
+  try {
+    await loadAllData();
+    document.getElementById('stockFilter').addEventListener('input', onFilterChange);
+    document.getElementById('dateFilter').addEventListener('change', onFilterChange);
+    onFilterChange(); // initial render with no filters
+  } catch (e) {
+    alert('Error loading data: ' + e.message);
+  }
+}
+
+window.addEventListener('DOMContentLoaded', init);
