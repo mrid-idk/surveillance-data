@@ -2,6 +2,7 @@ name: Daily NSE + BSE Data Import
 
 # Run at 9:30 PM IST every day (15:00 UTC)
 on:
+  workflow_dispatch:
   schedule:
     - cron: '30 15 * * *'
 
