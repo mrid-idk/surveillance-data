@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Surveillance Data Dashboard</title>
+  <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css' rel='stylesheet' />
+  <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.js'></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 1rem;
+    }
+    #calendar {
+      max-width: 900px;
+      margin: 2rem auto;
+    }
+    #indicatorSummary {
+      margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Stock Surveillance Dashboard</h1>
+
+  <label for="fileSelector">Select JSON file:</label>
+  <select id="fileSelector">
+    <option value="IND010125.json">01-Jan-2025</option>
+    <option value="IND020125.json">02-Jan-2025</option>
+    <!-- Add more files as needed -->
+  </select>
+
+  <div id="calendar"></div>
+  <div id="indicatorSummary"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
