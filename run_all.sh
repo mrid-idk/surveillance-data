@@ -1,5 +1,24 @@
 #!/bin/bash
 
+# Navigate to repo folder
+cd /home/kadambi.mridula/Documents/surveillance-data || exit
+
+# Run NSE data script
+python3 nse_surveillance_data/nse_download.py
+
+# Run BSE data script
+python3 bse_surveillance_data/bse_data_extraction.py
+
+# Add all changed files
+git add .
+
+# Commit with a timestamp message
+git commit -m "Automated data update: $(date '+%Y-%m-%d %H:%M:%S')"
+
+# Push to GitHub (make sure you have credentials set or use SSH)
+git push origin main
+#!/bin/bash
+
 cd "$(dirname "$0")"
 
 # Run NSE data script
