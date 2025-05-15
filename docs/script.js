@@ -1,6 +1,4 @@
-// Load index.json, then all data files, then allow filtering, calendar view, summary aggregation
-
-let allData = []; // Will hold all surveillance data from all files
+let allData = [];
 let calendar;
 
 async function fetchJSON(url) {
@@ -10,10 +8,9 @@ async function fetchJSON(url) {
 }
 
 async function loadAllData() {
-  // Changed fetch paths to be relative to docs folder
-  const indexList = await fetchJSON('data_json/index.json');
+  const indexList = await fetchJSON('./data_json/index.json');
   const datasets = await Promise.all(
-    indexList.map(filename => fetchJSON(`data_json/${filename}`))
+    indexList.map(filename => fetchJSON(`./data_json/${filename}`))
   );
   allData = datasets.flat();
 }
@@ -46,17 +43,13 @@ function groupByDate(data) {
 
 function renderCalendar(data) {
   const events = [];
-
-  // Group by date and create event titles
   const summary = groupByDate(data);
   for (const [date, counts] of Object.entries(summary)) {
     const title = `REG: ${counts.REG_FLAG}, ASM1: ${counts.ASM_STAGE_1}, ASM2: ${counts.ASM_STAGE_2}`;
     events.push({ title, date, allDay: true });
   }
 
-  if (calendar) {
-    calendar.destroy();
-  }
+  if (calendar) calendar.destroy();
 
   const calendarEl = document.getElementById('calendar');
   calendar = new FullCalendar.Calendar(calendarEl, {
@@ -71,7 +64,6 @@ function renderSummary(data) {
   const container = document.getElementById('summary');
   const summary = groupByDate(data);
   container.innerHTML = '<h3>Daily Aggregated Indicator Counts</h3>';
-
   for (const [date, counts] of Object.entries(summary)) {
     const div = document.createElement('div');
     div.textContent = `${date} - REG: ${counts.REG_FLAG}, ASM1: ${counts.ASM_STAGE_1}, ASM2: ${counts.ASM_STAGE_2}, Total: ${counts.total}`;
@@ -92,7 +84,7 @@ async function init() {
     await loadAllData();
     document.getElementById('stockFilter').addEventListener('input', onFilterChange);
     document.getElementById('dateFilter').addEventListener('change', onFilterChange);
-    onFilterChange(); // initial render with no filters
+    onFilterChange();
   } catch (e) {
     alert('Error loading data: ' + e.message);
   }
