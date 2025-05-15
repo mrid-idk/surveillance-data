@@ -2,7 +2,6 @@
 # coding: utf-8
 
 # In[6]:
-
 import os
 import time
 import zipfile
@@ -12,6 +11,26 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException, StaleElementReferenceException
+
+TRACK_FILE = "last_downloaded_bse.txt"
+
+def get_dates_to_download(days_back=7):
+    today = datetime.today().date()
+    if os.path.exists(TRACK_FILE):
+        with open(TRACK_FILE, "r") as f:
+            last_date_str = f.read().strip()
+            last_date = datetime.strptime(last_date_str, "%Y-%m-%d").date()
+        next_date = last_date + timedelta(days=1)
+        if next_date <= today:
+            return [next_date]
+        else:
+            return []
+    else:
+        return [today - timedelta(days=i) for i in range(days_back)]
+
+def save_last_downloaded(date):
+    with open(TRACK_FILE, "w") as f:
+        f.write(date.strftime("%Y-%m-%d"))
 
 def download_and_extract_zip(target_date, base_download_dir):
     tmp_zip_name = "rename.zip"
@@ -49,7 +68,7 @@ def download_and_extract_zip(target_date, base_download_dir):
             wait.until(EC.element_to_be_clickable((By.XPATH, checkbox_xpath))).click()
         except (TimeoutException, NoSuchElementException):
             print(f"❌ File or navigation not available for {target_date.strftime('%Y-%m-%d')}, skipping.")
-            return
+            return False
 
         download_btn_selector = (By.CSS_SELECTOR, 'input[type="submit"][value="Download"]')
         for attempt in range(3):
@@ -60,7 +79,7 @@ def download_and_extract_zip(target_date, base_download_dir):
             except StaleElementReferenceException:
                 if attempt == 2:
                     print(f"❌ Stale element error for {target_date.strftime('%Y-%m-%d')}, skipping.")
-                    return
+                    return False
                 time.sleep(1)
 
         # Wait for download to complete
@@ -76,10 +95,13 @@ def download_and_extract_zip(target_date, base_download_dir):
                 with zipfile.ZipFile(renamed_zip_path, 'r') as zip_ref:
                     zip_ref.extractall(csv_extract_dir)
                 print(f"✅ Extracted to: {csv_extract_dir}")
+                return True
             except zipfile.BadZipFile:
                 print(f"⚠️ Bad zip file for {target_date.strftime('%Y-%m-%d')}")
+                return False
         else:
             print(f"⏳ Download timed out or failed for {target_date.strftime('%Y-%m-%d')}")
+            return False
     finally:
         driver.quit()
 
@@ -87,9 +109,12 @@ if __name__ == "__main__":
     download_dir = os.path.join(os.getcwd(), "bse_data_files1")
     os.makedirs(download_dir, exist_ok=True)
 
-    today = datetime.today()
-    for i in range(7):
-        target_date = today - timedelta(days=i)
-        download_and_extract_zip(target_date, download_dir)
-
+    dates_to_download = get_dates_to_download(days_back=7)
+    if not dates_to_download:
+        print("✅ No new files to download.")
+    else:
+        for date in dates_to_download:
+            success = download_and_extract_zip(date, download_dir)
+            if success:
+                save_last_downloaded(date)
 

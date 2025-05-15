@@ -1,8 +1,6 @@
-#!/usr/bin/env python
 # coding: utf-8
 
 # In[6]:
-
 
 import os
 import time
@@ -13,8 +11,8 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
-# Change SAVE_DIR to 'nse_data'
 SAVE_DIR = "nse_data"
+TRACK_FILE = "last_downloaded.txt"
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 def get_cookie_session():
@@ -35,47 +33,65 @@ def get_cookie_session():
     driver.quit()
     return cookies
 
-def download_past_year_files():
+def get_dates_to_download():
+    today = datetime.date.today()
+
+    if os.path.exists(TRACK_FILE):
+        with open(TRACK_FILE, "r") as f:
+            last_date_str = f.read().strip()
+            last_date = datetime.datetime.strptime(last_date_str, "%Y-%m-%d").date()
+        next_date = last_date + datetime.timedelta(days=1)
+        if next_date < today:
+            return [next_date]
+        else:
+            return []
+    else:
+        return [today - datetime.timedelta(days=i) for i in range(1, 366)]
+
+def save_last_downloaded(date):
+    with open(TRACK_FILE, "w") as f:
+        f.write(date.strftime("%Y-%m-%d"))
+
+def download_files():
     cookies = get_cookie_session()
     headers = {
         "User-Agent": "Mozilla/5.0",
         "Referer": "https://www.nseindia.com/all-reports",
-        "Accept": "application/octet-stream",  # Explicitly accept the download type
-        "Connection": "keep-alive",  # Keep connection alive for faster retries
+        "Accept": "application/octet-stream",
+        "Connection": "keep-alive",
     }
 
-    today = datetime.date.today()
-    success = 0
+    dates = get_dates_to_download()
+    if not dates:
+        print("✅ No new dates to download.")
+        return
 
-    for i in range(1, 366):  # Last 365 days (approx. 1 year)
-        date = today - datetime.timedelta(days=i)
+    success = 0
+    for date in dates:
         date_str = date.strftime("%d%m%y")
         url = f"https://nsearchives.nseindia.com/content/cm/REG1_IND{date_str}.csv"
         file_path = os.path.join(SAVE_DIR, f"REG1_IND{date_str}.csv")
 
+        if os.path.exists(file_path):
+            print(f"⏩ Already exists: {file_path}")
+            continue
+
         print(f"🔄 Fetching: {url}")
-        
         try:
             response = requests.get(url, headers=headers, cookies=cookies, timeout=10)
 
-            if response.status_code == 200:
-                if response.content:  # Check if content is returned
-                    with open(file_path, "wb") as f:
-                        f.write(response.content)
-                    print(f"✅ Saved: {file_path}")
-                    success += 1
-                else:
-                    print(f"❌ Skipped: Empty content for {date_str}")
+            if response.status_code == 200 and response.content:
+                with open(file_path, "wb") as f:
+                    f.write(response.content)
+                print(f"✅ Saved: {file_path}")
+                save_last_downloaded(date)
+                success += 1
             else:
-                print(f"❌ Skipped: Failed to fetch {url} (Status: {response.status_code})")
+                print(f"❌ Skipped: No content or 404 for {date_str} (Status: {response.status_code})")
         except requests.RequestException as e:
-            print(f"❌ Skipped: Error fetching {url} - {str(e)}")
+            print(f"❌ Error: {url} - {str(e)}")
 
-    print(f"\n🎯 Downloaded {success} valid report(s).")
+    print(f"\n🎯 Downloaded {success} new file(s).")
 
 if __name__ == "__main__":
-    download_past_year_files()
-
-
-
-
+    download_files()
