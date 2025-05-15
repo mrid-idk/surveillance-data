@@ -10,6 +10,19 @@ python3 nse_surveillance_data/nse_download.py
 python3 bse_surveillance_data/bse_data_extraction.py
 
 # Add all changed files
+#!/bin/bash
+
+# Run NSE script
+python3 /home/kadambi.mridula/Documents/surveillance-data/nse_surveillance_data/nse_download.py
+
+# Run BSE script
+python3 /home/kadambi.mridula/Documents/surveillance-data/bse_surveillance_data/bse_data_extraction.py
+
+# Commit and push changes to GitHub
+cd /home/kadambi.mridula/Documents/surveillance-data
+git add .
+git commit -m "Automated daily import: NSE + BSE data"
+git push
 git add .
 
 # Commit with a timestamp message

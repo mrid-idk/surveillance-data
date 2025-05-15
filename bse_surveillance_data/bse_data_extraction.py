@@ -192,5 +192,3 @@ if __name__ == "__main__":
 # In[7]:
 
 
-python bse_data_extraction.py
-
