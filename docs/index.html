@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Surveillance Data Viewer</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; }
+    table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    th { background: #eee; }
+  </style>
+</head>
+<body>
+  <h1>Surveillance Data Viewer</h1>
+  <select id="dateSelector"></select>
+  <div id="tableContainer"></div>
+
+  <script>
+    async function loadFileList() {
+      const res = await fetch('data_json/file_list.json');
+      const files = await res.json();
+      return files;
+    }
+
+    async function loadJsonFile(filename) {
+      const res = await fetch(`data_json/${filename}`);
+      const data = await res.json();
+      return data;
+    }
+
+    async function init() {
+      const fileList = await loadFileList();
+      const dateSelector = document.getElementById('dateSelector');
+
+      fileList.forEach(file => {
+        const option = document.createElement('option');
+        option.value = file;
+        option.textContent = file.replace('.json', '');
+        dateSelector.appendChild(option);
+      });
+
+      dateSelector.addEventListener('change', async (e) => {
+        const selectedFile = e.target.value;
+        const data = await loadJsonFile(selectedFile);
+        renderTable(data);
+      });
+
+      // Load first file by default
+      if (fileList.length) {
+        dateSelector.value = fileList[0];
+        const initialData = await loadJsonFile(fileList[0]);
+        renderTable(initialData);
+      }
+    }
+
+    function renderTable(data) {
+      const container = document.getElementById('tableContainer');
+      if (!data || !data.length) {
+        container.innerHTML = '<p>No data available</p>';
+        return;
+      }
+
+      let html = '<table><thead><tr>';
+      // Assume all objects have same keys, get keys from first
+      const headers = Object.keys(data[0]);
+      headers.forEach(h => html += `<th>${h}</th>`);
+      html += '</tr></thead><tbody>';
+
+      data.forEach(row => {
+        html += '<tr>';
+        headers.forEach(h => html += `<td>${row[h]}</td>`);
+        html += '</tr>';
+      });
+
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    }
+
+    init();
+  </script>
+</body>
+</html>
