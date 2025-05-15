@@ -49,7 +49,9 @@ function renderCalendar(data) {
     events.push({ title, date, allDay: true });
   }
 
-  if (calendar) calendar.destroy();
+  if (calendar) {
+    calendar.destroy();
+  }
 
   const calendarEl = document.getElementById('calendar');
   calendar = new FullCalendar.Calendar(calendarEl, {
@@ -64,9 +66,14 @@ function renderSummary(data) {
   const container = document.getElementById('summary');
   const summary = groupByDate(data);
   container.innerHTML = '<h3>Daily Aggregated Indicator Counts</h3>';
+  if (Object.keys(summary).length === 0) {
+    container.innerHTML += '<p>No data available for selected filter.</p>';
+    return;
+  }
+
   for (const [date, counts] of Object.entries(summary)) {
     const div = document.createElement('div');
-    div.textContent = `${date} - REG: ${counts.REG_FLAG}, ASM1: ${counts.ASM_STAGE_1}, ASM2: ${counts.ASM_STAGE_2}, Total: ${counts.total}`;
+    div.textContent = `${date} — REG: ${counts.REG_FLAG}, ASM1: ${counts.ASM_STAGE_1}, ASM2: ${counts.ASM_STAGE_2}, Total: ${counts.total}`;
     container.appendChild(div);
   }
 }
@@ -91,3 +98,4 @@ async function init() {
 }
 
 window.addEventListener('DOMContentLoaded', init);
+
