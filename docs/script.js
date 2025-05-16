@@ -10,16 +10,16 @@ async function fetchJSON(url) {
 async function loadAllData() {
   const indexList = await fetchJSON('data_json/index.json');
   const datasets = await Promise.all(
-    indexList.map(file => fetchJSON(`data_json/${file}`))
+    indexList.map(filename => fetchJSON(`data_json/${filename}`))
   );
   allData = datasets.flat();
 }
 
-function filterData(stock, date) {
-  return allData.filter(entry => {
-    const stockMatch = stock ? entry.SYMBOL.toLowerCase().includes(stock.toLowerCase()) : true;
-    const dateMatch = date ? entry.DATE === date : true;
-    return stockMatch && dateMatch;
+function filterData(stockSymbol, date) {
+  return allData.filter(item => {
+    const symbolMatch = stockSymbol ? item.SYMBOL.toLowerCase().includes(stockSymbol.toLowerCase()) : true;
+    const dateMatch = date ? item.DATE === date : true;
+    return symbolMatch && dateMatch;
   });
 }
 
@@ -27,50 +27,50 @@ function groupByDate(data) {
   const summary = {};
   data.forEach(item => {
     const d = item.DATE;
-    if (!summary[d]) summary[d] = { REG_FLAG: 0, ASM1: 0, ASM2: 0, total: 0 };
-    if (item.REG_FLAG === '1') summary[d].REG_FLAG++;
-    if (item.ASM_STAGE === '1') summary[d].ASM1++;
-    if (item.ASM_STAGE === '2') summary[d].ASM2++;
-    summary[d].total++;
+    if (!summary[d]) summary[d] = { REG_FLAG: 0, ASM_STAGE_1: 0, ASM_STAGE_2: 0, total: 0 };
+    if (item.REG_FLAG === '1') summary[d].REG_FLAG += 1;
+    if (item.ASM_STAGE === '1') summary[d].ASM_STAGE_1 += 1;
+    if (item.ASM_STAGE === '2') summary[d].ASM_STAGE_2 += 1;
+    summary[d].total += 1;
   });
   return summary;
 }
 
 function renderCalendar(data) {
   const events = [];
-  const grouped = groupByDate(data);
-  for (const [date, count] of Object.entries(grouped)) {
-    events.push({
-      title: `REG: ${count.REG_FLAG}, ASM1: ${count.ASM1}, ASM2: ${count.ASM2}`,
-      date,
-      allDay: true
-    });
+  const summary = groupByDate(data);
+  for (const [date, counts] of Object.entries(summary)) {
+    const title = `REG: ${counts.REG_FLAG}, ASM1: ${counts.ASM_STAGE_1}, ASM2: ${counts.ASM_STAGE_2}`;
+    events.push({ title, date, allDay: true });
   }
 
   if (calendar) calendar.destroy();
-  calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+
+  const calendarEl = document.getElementById('calendar');
+  calendar = new FullCalendar.Calendar(calendarEl, {
     initialView: 'dayGridMonth',
     events,
-    height: 550
+    height: 500,
   });
   calendar.render();
 }
 
 function renderSummary(data) {
-  const summaryEl = document.getElementById('summary');
-  const grouped = groupByDate(data);
-  summaryEl.innerHTML = `<h3>Indicator Summary</h3>`;
-  Object.entries(grouped).forEach(([date, c]) => {
-    const p = document.createElement('p');
-    p.textContent = `${date}: REG=${c.REG_FLAG}, ASM1=${c.ASM1}, ASM2=${c.ASM2}, Total=${c.total}`;
-    summaryEl.appendChild(p);
-  });
+  const container = document.getElementById('summary');
+  const summary = groupByDate(data);
+  container.innerHTML = '<h3>Daily Aggregated Indicator Counts</h3>';
+
+  for (const [date, counts] of Object.entries(summary)) {
+    const div = document.createElement('div');
+    div.textContent = `${date} - REG: ${counts.REG_FLAG}, ASM1: ${counts.ASM_STAGE_1}, ASM2: ${counts.ASM_STAGE_2}, Total: ${counts.total}`;
+    container.appendChild(div);
+  }
 }
 
-function onFilter() {
-  const stock = document.getElementById('stockFilter').value.trim();
+function onFilterChange() {
+  const stockSymbol = document.getElementById('stockFilter').value.trim();
   const date = document.getElementById('dateFilter').value;
-  const filtered = filterData(stock, date);
+  const filtered = filterData(stockSymbol, date);
   renderCalendar(filtered);
   renderSummary(filtered);
 }
@@ -78,10 +78,10 @@ function onFilter() {
 window.addEventListener('DOMContentLoaded', async () => {
   try {
     await loadAllData();
-    document.getElementById('stockFilter').addEventListener('input', onFilter);
-    document.getElementById('dateFilter').addEventListener('change', onFilter);
-    onFilter(); // initial render
-  } catch (err) {
-    alert('Error loading data: ' + err.message);
+    document.getElementById('stockFilter').addEventListener('input', onFilterChange);
+    document.getElementById('dateFilter').addEventListener('change', onFilterChange);
+    onFilterChange(); // initial render
+  } catch (e) {
+    alert('Error loading data: ' + e.message);
   }
 });
