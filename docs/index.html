@@ -1,58 +1,39 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Surveillance Data Dashboard</title>
-  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet" />
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 900px;
-      margin: 20px auto;
-      padding: 0 1rem;
-    }
-    #controls {
-      margin-bottom: 1rem;
-      display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
-    }
-    label {
-      font-weight: bold;
-    }
-    select, input {
-      padding: 0.3rem;
-      font-size: 1rem;
-    }
-    #calendar {
-      margin-top: 1rem;
-    }
-    #summary {
-      margin-top: 1rem;
-    }
-  </style>
-</head>
-<body>
-  <h1>Stock Surveillance Dashboard</h1>
+---
+layout: default
+title: Surveillance Dashboard
+---
 
-  <div id="controls">
-    <div>
-      <label for="stockFilter">Filter by Stock Symbol:</label><br />
-      <input id="stockFilter" placeholder="Type symbol (e.g. RELIANCE)" />
-    </div>
-    <div>
-      <label for="dateFilter">Filter by Date:</label><br />
-      <input type="date" id="dateFilter" />
-    </div>
-  </div>
+<div id="controls">
+  <label for="stockFilter">Stock Symbol:</label>
+  <input id="stockFilter" placeholder="e.g. RELIANCE" />
 
-  <div id="calendar"></div>
-  <div id="summary"></div>
+  <label for="dateFilter">Filter by Date:</label>
+  <input type="date" id="dateFilter" />
+</div>
 
-  <!-- ✅ First load FullCalendar JS -->
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.js"></script>
+<div id="calendar"></div>
+<div id="summary"></div>
 
-  <!-- ✅ Then load your script -->
-  <script src="script.js"></script>
-</body>
-</html>
+<!-- FullCalendar & Scripts -->
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.js"></script>
+<script src="{{ '/script.js' | relative_url }}"></script>
+
+<style>
+  #controls {
+    display: flex;
+    gap: 1rem;
+    margin: 20px 0;
+    flex-wrap: wrap;
+  }
+  #calendar {
+    margin-top: 20px;
+    max-width: 1000px;
+  }
+  #summary {
+    margin-top: 30px;
+    padding: 1rem;
+    background: #f6f6f6;
+    border-radius: 8px;
+  }
+</style>
