@@ -2,11 +2,7 @@ name: Daily NSE + BSE Data Import
 
 on:
   schedule:
- HEAD
-    - cron: '00 16 * * *'  # 9:30 PM IST daily
-
     - cron: '00 16 * * *'  # Runs at 9:30 PM IST daily
- c1d0794 (Add GitHub Actions to auto-import NSE and BSE daily)
   workflow_dispatch:
 
 jobs:
