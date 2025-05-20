@@ -1,46 +1,60 @@
-# %%
-import os
 import csv
 import json
+import os
 
-# Your actual folders in repo
-csv_folders = [
-    "nse_data",              # NSE CSV files root folder
-    "bse_data_1/csv_files"   # BSE CSV files nested folder
-]
+INPUT_FOLDER = "bse_data_files1/csv_files"
+OUTPUT_FOLDER = "docs/bse_json"
 
-json_output_dir = "data_json"
-os.makedirs(json_output_dir, exist_ok=True)
+# Create output folder if it doesn't exist
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
-json_files = []
+def clean_header(header):
+    return header.strip().replace("\ufeff", "")  # Remove BOM, extra spaces
 
-def csv_to_json(csv_path, json_path):
-    with open(csv_path, mode='r', encoding='utf-8') as csv_file:
-        reader = csv.DictReader(csv_file)
-        rows = list(reader)
-    with open(json_path, mode='w', encoding='utf-8') as json_file:
-        json.dump(rows, json_file, indent=2)
-    print(f"✅ Converted {csv_path} → {json_path}")
+def convert_file(input_path, output_path, date_str):
+    formatted_date = f"20{date_str[-2:]}-{date_str[2:4]}-{date_str[0:2]}"
+    converted = []
 
-for folder in csv_folders:
-    if not os.path.exists(folder):
-        print(f"Warning: CSV folder '{folder}' not found, skipping...")
-        continue
-    
-    for root, dirs, files in os.walk(folder):
-        for file in files:
-            if file.endswith(".csv"):
-                csv_path = os.path.join(root, file)
-                json_file_name = file.replace(".csv", ".json")
-                json_path = os.path.join(json_output_dir, json_file_name)
-                csv_to_json(csv_path, json_path)
-                json_files.append(json_file_name)
+    with open(input_path, newline='', encoding='utf-8') as csvfile:
+        reader = csv.DictReader(csvfile)
+        reader.fieldnames = [clean_header(h) for h in reader.fieldnames]
 
-file_list_path = os.path.join(json_output_dir, "file_list.json")
-with open(file_list_path, "w", encoding="utf-8") as f:
-    json.dump(json_files, f, indent=2)
+        # Determine the slice range for desired columns
+        start_index = reader.fieldnames.index("ScripId")
+        end_column = "High low price variation_150_percentage_12 months"
+        end_index = reader.fieldnames.index(end_column) + 1  # +1 because slice is exclusive
 
-print(f"📄 Updated {file_list_path} with {len(json_files)} entries.")
+        selected_headers = reader.fieldnames[start_index:end_index]
 
+        for row in reader:
+            symbol = row.get("ScripId", "").strip()
+            if not symbol:
+                continue
 
+            item = {"DATE": formatted_date}
+            for key in selected_headers:
+                item[key] = row.get(key, "").strip()
 
+            converted.append(item)
+
+    with open(output_path, "w", encoding='utf-8') as f:
+        json.dump(converted, f, indent=2)
+
+def main():
+    index_list = []
+
+    for filename in os.listdir(INPUT_FOLDER):
+        if filename.startswith("REG1_IND") and filename.endswith(".csv"):
+            date_part = filename.replace("REG1_IND", "").replace(".csv", "")
+            input_file = os.path.join(INPUT_FOLDER, filename)
+            output_file = os.path.join(OUTPUT_FOLDER, f"IND{date_part}.json")
+            convert_file(input_file, output_file, date_part)
+            index_list.append(f"bse_json/IND{date_part}.json")
+
+    with open(os.path.join(OUTPUT_FOLDER, "index_bse.json"), "w", encoding='utf-8') as f:
+        json.dump(index_list, f, indent=2)
+
+    print(f"✅ Converted {len(index_list)} files. index_bse.json updated.")
+
+if __name__ == "__main__":
+    main()
