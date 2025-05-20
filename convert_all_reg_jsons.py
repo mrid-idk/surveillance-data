@@ -1,44 +1,57 @@
+import csv
 import json
 import os
 
-INPUT_FOLDER = "docs/data_json"
-OUTPUT_FOLDER = "docs/data_json/converted"
+INPUT_FOLDER = "nse_data"
+OUTPUT_FOLDER = "docs/nse_json"
 
 # Create output folder if it doesn't exist
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
+def clean_header(header):
+    return header.strip().replace("\ufeff", "")  # Remove BOM, extra spaces
+
 def convert_file(input_path, output_path, date_str):
-    with open(input_path, "r") as f:
-        data = json.load(f)
-
-    formatted_date = f"20{date_str[-2:]}-{date_str[2:4]}-{date_str[0:2]}"  # DDMMYY → YYYY-MM-DD
-
+    formatted_date = f"20{date_str[-2:]}-{date_str[2:4]}-{date_str[0:2]}"
     converted = []
-    for item in data:
-        converted.append({
-            "SYMBOL": item.get("ScripId", ""),
-            "DATE": formatted_date,
-            "REG_FLAG": item.get("GSM", "0"),
-            "ASM_STAGE": (
-                "1" if item.get("Short_Term_Additional_Surveillance_Measure (Short Term ASM)") == "100" else "0"
-            )
-        })
 
-    with open(output_path, "w") as f:
+    with open(input_path, newline='', encoding='utf-8') as csvfile:
+        reader = csv.DictReader(csvfile)
+        reader.fieldnames = [clean_header(h) for h in reader.fieldnames]
+
+        # Determine the slice range for desired columns
+        start_index = reader.fieldnames.index("Symbol")
+        end_column = "High low price variation greater than 150perc in previous 12 months"
+        end_index = reader.fieldnames.index(end_column) + 1  # +1 because slice is exclusive
+
+        selected_headers = reader.fieldnames[start_index:end_index]
+
+        for row in reader:
+            symbol = row.get("Symbol", "").strip()
+            if not symbol:
+                continue
+
+            item = {"DATE": formatted_date}
+            for key in selected_headers:
+                item[key] = row.get(key, "").strip()
+
+            converted.append(item)
+
+    with open(output_path, "w", encoding='utf-8') as f:
         json.dump(converted, f, indent=2)
 
 def main():
     index_list = []
+
     for filename in os.listdir(INPUT_FOLDER):
-        if filename.startswith("REG_IND") and filename.endswith(".json"):
-            date_part = filename.replace("REG_IND", "").replace(".json", "")
+        if filename.startswith("REG1_IND") and filename.endswith(".csv"):
+            date_part = filename.replace("REG1_IND", "").replace(".csv", "")
             input_file = os.path.join(INPUT_FOLDER, filename)
             output_file = os.path.join(OUTPUT_FOLDER, f"IND{date_part}.json")
             convert_file(input_file, output_file, date_part)
-            index_list.append(f"converted/IND{date_part}.json")
+            index_list.append(f"nse_json/IND{date_part}.json")
 
-    # Write index.json listing converted filenames
-    with open(os.path.join(INPUT_FOLDER, "index.json"), "w") as f:
+    with open(os.path.join(OUTPUT_FOLDER, "index.json"), "w", encoding='utf-8') as f:
         json.dump(index_list, f, indent=2)
 
     print(f"✅ Converted {len(index_list)} files. index.json updated.")
