@@ -1,7 +1,5 @@
 # coding: utf-8
 
-# In[6]:
-
 import os
 import time
 import datetime
@@ -12,7 +10,6 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
 SAVE_DIR = "nse_data"
-TRACK_FILE = "last_downloaded.txt"
 os.makedirs(SAVE_DIR, exist_ok=True)
 
 def get_cookie_session():
@@ -33,24 +30,9 @@ def get_cookie_session():
     driver.quit()
     return cookies
 
-def get_dates_to_download():
+def get_last_year_dates():
     today = datetime.date.today()
-
-    if os.path.exists(TRACK_FILE):
-        with open(TRACK_FILE, "r") as f:
-            last_date_str = f.read().strip()
-            last_date = datetime.datetime.strptime(last_date_str, "%Y-%m-%d").date()
-        next_date = last_date + datetime.timedelta(days=1)
-        if next_date < today:
-            return [next_date]
-        else:
-            return []
-    else:
-        return [today - datetime.timedelta(days=i) for i in range(1, 366)]
-
-def save_last_downloaded(date):
-    with open(TRACK_FILE, "w") as f:
-        f.write(date.strftime("%Y-%m-%d"))
+    return [today - datetime.timedelta(days=i) for i in range(1, 366)]  # yesterday to 365 days ago
 
 def download_files():
     cookies = get_cookie_session()
@@ -61,12 +43,9 @@ def download_files():
         "Connection": "keep-alive",
     }
 
-    dates = get_dates_to_download()
-    if not dates:
-        print("✅ No new dates to download.")
-        return
-
+    dates = get_last_year_dates()
     success = 0
+
     for date in dates:
         date_str = date.strftime("%d%m%y")
         url = f"https://nsearchives.nseindia.com/content/cm/REG1_IND{date_str}.csv"
@@ -84,14 +63,13 @@ def download_files():
                 with open(file_path, "wb") as f:
                     f.write(response.content)
                 print(f"✅ Saved: {file_path}")
-                save_last_downloaded(date)
                 success += 1
             else:
                 print(f"❌ Skipped: No content or 404 for {date_str} (Status: {response.status_code})")
         except requests.RequestException as e:
             print(f"❌ Error: {url} - {str(e)}")
 
-    print(f"\n🎯 Downloaded {success} new file(s).")
+    print(f"\n🎯 Downloaded {success} file(s) for the last 1 year.")
 
 if __name__ == "__main__":
     download_files()
