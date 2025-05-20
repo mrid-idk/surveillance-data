@@ -14,6 +14,7 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException,
 
 TRACK_FILE = "last_downloaded_bse.txt"
 
+
 def get_dates_to_download(days_back=7):
     today = datetime.today().date()
     if os.path.exists(TRACK_FILE):
@@ -22,11 +23,12 @@ def get_dates_to_download(days_back=7):
             last_date = datetime.strptime(last_date_str, "%Y-%m-%d").date()
         next_date = last_date + timedelta(days=1)
         if next_date <= today:
-            return [next_date]
+            return [next_date + timedelta(days=i) for i in range((today - next_date).days + 1)]
         else:
             return []
     else:
         return [today - timedelta(days=i) for i in range(days_back)]
+
 
 def save_last_downloaded(date):
     with open(TRACK_FILE, "w") as f:
